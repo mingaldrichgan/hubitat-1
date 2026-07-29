@@ -28,7 +28,8 @@
     "10A": "<i class=\"ewi-rain\"></i> ${rainRate} in/hr<br>Hourly: ${rainHourly} in<br>Daily: ${rainDaily} in<br>Monthly: ${rainMonthly} in<br>Yearly: ${rainYearly} in",
     "11": "<i class=\"ewi-wind\"></i> ${windDirection} &deg; ${windCompass}<br><i class=\"ewi-windspeed\" style=\"color:#${windColor}\"></i> ${windSpeed} mph<br>Gust: ${windGust} mph<br>Daily Max: ${windGustMaxDaily} mph",
     "11A": "<i class=\"ewi-wind\"></i> ${windDirection} &deg; ${windCompass}<br><i class=\"ewi-windspeed\"</i> ${windSpeed} mph<br>Gust: ${windGust} mph<br>Daily Max: ${windGustMaxDaily} mph",
-    "13": "<i class=\"ewi-snow\"></i>Hourly: ${snowHourly} in<br>Daily: ${snowDaily} in<br>Monthly: ${snowMonthly} in<br>Yearly Total: ${snowYearly} in"
+    "13": "<i class=\"ewi-snow\"></i>Hourly: ${snowHourly} in<br>Daily: ${snowDaily} in<br>Monthly: ${snowMonthly} in<br>Yearly Total: ${snowYearly} in",
+    "14": "<i class=\"ewi-air\" style=\"color:#${aqiColor}\"></i>${aqiDanger}<br>PM1: ${pm1} &micro;g/m&sup3;<br>PM2.5: ${pm25} &micro;g/m&sup3;<br>PM4: ${pm4} &micro;g/m&sup3;<br>PM10: ${pm10} &micro;g/m&sup3;<br>AQI: ${aqi}<br>CO&sup2;: ${carbonDioxide} ppm<br>CO&sup2; 24 hr.: ${carbonDioxide_avg_24h} ppm"
   },
   "templatesMetric": {
     "0":  "<i class=\"ewi-temperature\"></i> ${temperature} &deg;C<br><i class=\"ewi-humidity\"></i> ${humidity} %",
@@ -45,6 +46,8 @@
     "10": "<i class=\"ewi-rain\"></i> ${rainRate} mm/hr<br>Hourly: ${rainHourly} mm<br>Daily: ${rainDaily} mm<br>Monthly: ${rainMonthly} mm<br>Total: ${rainTotal} mm",
     "10A": "<i class=\"ewi-rain\"></i> ${rainRate} mm/hr<br>Hourly: ${rainHourly} mm<br>Daily: ${rainDaily} mm<br>Monthly: ${rainMonthly} mm<br>Total: ${rainYearly} mm",
     "11": "<i class=\"ewi-wind${windCompass}\"></i> ${windDirection} &deg; ${windCompass}<br><i class=\"ewi-windspeed\" style=\"color:#${windColor}\"></i>${windSpeed} km/h<br>Gust: ${windGust} km/h<br>Daily Max: ${windGustMaxDaily} km/h",
-    "13": "<i class=\"ewi-snow\"></i>Hourly ${snowHourly} mm<br>Daily: ${snowDaily} mm<br>Monthly: ${snowMonthly} mm<br>Yearly Total: ${snowYearly} mm"
+    "13": "<i class=\"ewi-snow\"></i>Hourly ${snowHourly} mm<br>Daily: ${snowDaily} mm<br>Monthly: ${snowMonthly} mm<br>Yearly Total: ${snowYearly} mm",
+    "14": "<i class=\"ewi-air\" style=\"color:#${aqiColor}\"></i>${aqiDanger}<br>PM1: ${pm1} &micro;g/m&sup3;<br>PM2.5: ${pm25} &micro;g/m&sup3;<br>PM4: ${pm4} &micro;g/m&sup3;<br>PM10: ${pm10} &micro;g/m&sup3;<br>AQI: ${aqi}<br>CO&sup2;: ${carbonDioxide} ppm<br>CO&sup2; 24 hr.: ${carbonDioxide_avg_24h} ppm"
+  },
  }
 }
