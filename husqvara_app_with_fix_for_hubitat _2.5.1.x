@@ -29,6 +29,10 @@
 * in addition the next start time was wrong in the web socket interface it needed to be multiplied by 1000 to get the correct start time.
 * upped the version number to reflect all theese changes.
 *
+* lgk version 10
+* it was using positions last to get the long latitude but since the have added a psotion (not plural) i can now use.. so up version as v4 it would only update this 
+* positions track sparingly 
+*
  */
 
 //file:noinspection GroovyDoubleNegation
@@ -42,7 +46,7 @@ import groovy.json.*
 import groovy.transform.Field
 import java.text.SimpleDateFormat
 
-static String getVersionNum()		{ return "00.00.09" }
+static String getVersionNum()		{ return "00.00.10" }
 static String getVersionLabel()		{ return "Husqvarna Automower Manager, version "+getVersionNum() }
 static String getMyNamespace()		{ return "imnotbob" }
 
@@ -1817,7 +1821,7 @@ Boolean updateMowerChildren(){
 		List<Map> flist=[]
 		Map srcMap=getMowerMap(mower)
 		if(srcMap){
-           // log.warn "src map  = $srcMap"
+            LOG("src map  = $srcMap", 4, sDEBUG)
             
             
 			String dbg=settings.debugLevel == null ? "2" : settings.debugLevel
@@ -1852,7 +1856,7 @@ Boolean updateMowerChildren(){
                 
                 //lgk set readable error code if there is one and time
                 
-                log.info "Update!"
+              //  log.info "Update!"
           //  log.warn "attrs are ${srcMap.attributes.mower}"
                 // lgk cannot use unexpeccted error as in api as 0 as that is what is being returned here.
               /*  if (srcMap.attributes.mower.errorCode != null && srcMap.attributes.mower.errorCode != 0)
@@ -1916,8 +1920,9 @@ Boolean updateMowerChildren(){
                 flist << ['totalRunningTime' : srcMap.attributes.statistics.totalRunningTime /3600]
                 flist << ['totalSearchingTime' : srcMap.attributes.statistics.totalSearchingTime /3600]
                // flist << ['errorDesc' : errorString]
-                flist << ['latitude' : srcMap.attributes?.positions?.getAt(0).latitude]
-                flist << ['longitude' :srcMap.attributes?.positions?.getAt(0).longitude]
+               
+                flist << ['latitude'  : srcMap.attributes.position.latitude]
+                flist << ['longitude' : srcMap.attributes.position.longitude]
                  //flist << ['latitude' : 0]
                 //flist << ['longitude' :0]
                 
