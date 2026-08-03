@@ -740,7 +740,7 @@ void wsEvtHandler(Map evt){
                             // 4. Save the entire updated planner map back to your attributes storage
                             ma[it.key] = updatedPlanner 
                             didChg = true 
-                            LOG("Processed: type: ${typ} key: ${it.key} value: ${updatedPlanner}", 3, sDEBUG) 
+                            LOG("Processed: ${typ} key: ${it.key} value: ${updatedPlanner}", 3, sDEBUG) 
 
                         } else { 
                             LOG("wsEvtHandler NOT FOUND - type: ${typ} key: ${it.key} value: ${theval}", 3, sDEBUG) 
