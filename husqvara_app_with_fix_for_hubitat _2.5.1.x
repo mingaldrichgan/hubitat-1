@@ -22,7 +22,13 @@
  *
  *  Note: currently Husqvarna allows a total of 10K requests a month.  This app must poll so this must be taken into account
  *	This works out to shortest poll is every 5 minutes, with little remaining headroom
- * lgkahn 8/26 fix for hubitat 2.5.1.x broken httpget parsing retuning a status code of 200 but null response.. had to use raw response and parse myself to json
+
+* lgk modified 8/26 to fix the bug in hubitat with httpget parsing. 
+* also noticed we are not handling any of the v2 api returns from the web socket interface..
+* added a bunch of code to handle all those include frequent lat, long and battery updates,
+* in addition the next start time was wrong in the web socket interface it needed to be multiplied by 1000 to get the correct start time.
+* upped the version number to reflect all theese changes.
+*
  */
 
 //file:noinspection GroovyDoubleNegation
@@ -36,7 +42,7 @@ import groovy.json.*
 import groovy.transform.Field
 import java.text.SimpleDateFormat
 
-static String getVersionNum()		{ return "00.00.08" }
+static String getVersionNum()		{ return "00.00.09" }
 static String getVersionLabel()		{ return "Husqvarna Automower Manager, version "+getVersionNum() }
 static String getMyNamespace()		{ return "imnotbob" }
 
@@ -685,7 +691,7 @@ void webSocketStatus(Boolean active) {
 @SuppressWarnings('GroovyFallthrough')
 void wsEvtHandler(Map evt){
 
-	LOG("wsEvtHandler evt: ${evt}", 4, sDEBUG)
+	LOG("in wsEvtHandler evt: ${evt}", 3, sDEBUG)
 
 //	state.numAvailMowers=((List<Map>)ndata)?.size() ?: 0
 	Boolean fndMower,didChg
@@ -709,44 +715,131 @@ void wsEvtHandler(Map evt){
 
 	if(mower && typ){
 		switch(typ){
+            
 			case 'battery-event-v2':
-			case 'calendar-event-v2':
-			case 'cuttingHeight-event-v2':
-			case 'headlights-event-v2':
-			case 'messages-event-v2':
-			case 'mower-event-v2':
-			case 'planner-event-v2':
-			case 'position-event-v2':
-
-			case 'status-event':
-
-			case 'positions-event':
-
-			case 'settings-event':
-				if(evt.attributes){
+            LOG("battery event v2", 3, sDEBUG)
+            	if(evt.attributes){
 					Map ma= (Map)mdata[dni].attributes
 					((Map)evt.attributes).each {
-						LOG("wsEvtHandler - type: ${typ} key: ${it.key} value: ${it.value}", 4, sDEBUG)
-						/*
-						if((String)it.key in ['cuttingHeight','headlight']){
-							Map mas= (Map)ma.settings
-							mas[it.key]=it.value
-							didChg=true
-						}else{
-						 */
-							if((String)it.key in ['calendar','position','battery','mower','metadata','planner','statistics','message','position', 'cuttingHeight', 'headlight']){
+							LOG("wsEvtHandler - type: ${typ} key: ${it.key} value: ${it.value}", 3, sDEBUG)
+						
+							if((String)it.key in ['battery']){
 								ma[it.key]=it.value
 								didChg=true
 							}else{
 								LOG("wsEvtHandler NOT FOUND - type: ${typ} key: ${it.key} value: ${it.value}", 4, sDEBUG)
 							}
-						//}
 					}
 					//LOG("wsEvtHandler mdata[${dni}]: ${mdata[dni]}", 4, sDEBUG)
 					//LOG("wsEvtHandler ma: ${ma}", 4, sDEBUG)
 					mdata[dni].attributes=ma
 				}
 				break
+            
+			case 'calendar-event-v2':
+			case 'cuttingHeight-event-v2':
+			case 'headlights-event-v2':
+			case 'messages-event-v2':
+            
+			case 'mower-event-v2': 
+            LOG("mower event v2", 3, sDEBUG)
+            	if(evt.attributes){
+					Map ma= (Map)mdata[dni].attributes
+					((Map)evt.attributes).each {
+							LOG("wsEvtHandler - type: ${typ} key: ${it.key} value: ${it.value}", 3, sDEBUG)
+					
+							if((String)it.key in ['calendar','position','battery','mower','metadata','planner','statistics','message','position', 'cuttingHeight', 'headlight']){
+								ma[it.key]=it.value
+								didChg=true
+							}else{
+								LOG("wsEvtHandler NOT FOUND - type: ${typ} key: ${it.key} value: ${it.value}", 4, sDEBUG)
+							}
+					}
+					//LOG("wsEvtHandler mdata[${dni}]: ${mdata[dni]}", 4, sDEBUG)
+					//LOG("wsEvtHandler ma: ${ma}", 4, sDEBUG)
+					mdata[dni].attributes=ma
+				}
+				break
+                       
+                case 'planner-event-v2': 
+                LOG("planner event v2", 3, sDEBUG) 
+                if(evt.attributes){ 
+                    Map ma = (Map)mdata[dni].attributes
+                    ((Map)evt.attributes).each { 
+                        LOG("wsEvtHandler - type: ${typ} key: ${it.key} value: ${it.value}", 3, sDEBUG) 
+
+                        def theval = it.value 
+
+                        if((String)it.key in ['planner']){ 
+                            // 1. Create a shallow copy of the planner map so we don't mutate the raw event directly
+                            Map updatedPlanner = new HashMap(theval)
+
+                            // 2. Safely extract, cast, and multiply the timestamp inside this specific block
+                            def rawTimestamp = updatedPlanner.nextStartTimestamp ? (updatedPlanner.nextStartTimestamp as Long) : 0L 
+                            def fixedval = rawTimestamp * 1000 
+                            LOG("bad raw timestamp = $rawTimestamp, Fixed timestamp = $fixedval",4 , sDEBUG)
+
+                            // 3. Inject the fixed timestamp back into the copied planner object
+                            updatedPlanner.nextStartTimestamp = fixedval
+
+                            // 4. Save the entire updated planner map back to your attributes storage
+                            ma[it.key] = updatedPlanner 
+                            didChg = true 
+                        } else { 
+                            LOG("wsEvtHandler NOT FOUND - type: ${typ} key: ${it.key} value: ${theval}", 4, sDEBUG) 
+                        } 
+                    } 
+					//LOG("wsEvtHandler ma: ${ma}", 3, sDEBUG)
+                    mdata[dni].attributes = ma 
+                } 
+                break
+                 
+			case 'position-event-v2':
+            LOG("positiions event v2", 3, sDEBUG)
+            // lgk need to handle lonitude and latitude here as ignoring them
+             // parsed {"id":"004e7308-47b6-4a6a-8699-4e4746401e30","type":"position-event-v2","attributes":{"position":{"latitude":47.1261516,"longitude":-88.6025166}}}
+            	if(evt.attributes){
+					Map ma= (Map)mdata[dni].attributes
+					((Map)evt.attributes).each {
+							LOG("wsEvtHandler - type: ${typ} key: ${it.key} value: ${it.value}", 3, sDEBUG)
+					
+							if((String)it.key in ['position']){
+								ma[it.key]=it.value
+								didChg=true
+							}else{
+								LOG("wsEvtHandler NOT FOUND - type: ${typ} key: ${it.key} value: ${it.value}", 4, sDEBUG)
+							}
+					}
+					//LOG("wsEvtHandler mdata[${dni}]: ${mdata[dni]}", 3, sDEBUG)
+					//LOG("wsEvtHandler ma: ${ma}", 3, sDEBUG)
+					mdata[dni].attributes=ma
+				}
+				break
+            
+			case 'status-event':
+
+			case 'positions-event':
+            
+			case 'settings-event':
+               LOG("settings event", 3, sDEBUG)
+				if(evt.attributes){
+					Map ma= (Map)mdata[dni].attributes
+					((Map)evt.attributes).each {
+						LOG("wsEvtHandler - type: ${typ} key: ${it.key} value: ${it.value}", 3, sDEBUG)
+						
+							if((String)it.key in ['calendar','position','battery','mower','metadata','planner','statistics','message','position', 'cuttingHeight', 'headlight']){
+								ma[it.key]=it.value
+								didChg=true
+							}else{
+								LOG("wsEvtHandler NOT FOUND - type: ${typ} key: ${it.key} value: ${it.value}", 4, sDEBUG)
+							}
+					}
+					//LOG("wsEvtHandler mdata[${dni}]: ${mdata[dni]}", 4, sDEBUG)
+					//LOG("wsEvtHandler ma: ${ma}", 4, sDEBUG)
+					mdata[dni].attributes=ma
+				}
+				break
+            
 			default:
 				LOG("wsEvtHandler NO MATCH - type: ${typ} evt: ${evt}", 4, sDEBUG)
 
@@ -761,7 +854,7 @@ void wsEvtHandler(Map evt){
 	}
 
 	state.mowerData=mdata
-	//log.debug "resp: ${state.mowerData}"
+	LOG("passing to update children: ${state.mowerData}", 4, sDEBUG)
 
 	if(fndMower && didChg){
 		updTsVal("getAutoUpdDt")
@@ -1673,7 +1766,7 @@ void pollFromChild(String deviceId=sBLANK,Boolean force=false){
 }
 
 Boolean pollChildren(String deviceId=sBLANK,Boolean force=false, Boolean isSched=true){
-   if(debugLevel(4)) log.debug "in pollchildren"
+  // if(debugLevel(4)) log.debug "in pollchildren"
 	Boolean result
 	result=false
 	String msgH="pollChildren(device: $deviceId, force: $force) | "
@@ -1694,7 +1787,6 @@ Boolean pollChildren(String deviceId=sBLANK,Boolean force=false, Boolean isSched
 	state.remove('skipTime')
 	state.inPollChildren=true
 
-   if(debugLevel(4)) log.debug "here"
     
 	String version=getVersionLabel()
 	LOG(msgH+"Checking for updates...",4,sTRACE)
