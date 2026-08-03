@@ -1920,24 +1920,19 @@ Boolean updateMowerChildren(){
                 flist << ['totalRunningTime' : srcMap.attributes.statistics.totalRunningTime /3600]
                 flist << ['totalSearchingTime' : srcMap.attributes.statistics.totalSearchingTime /3600]
                // flist << ['errorDesc' : errorString]
-               
+             
+            if (srcMap.attributes.position?.latitude != null) 
+            {
+  
                 flist << ['latitude'  : srcMap.attributes.position.latitude]
                 flist << ['longitude' : srcMap.attributes.position.longitude]
-                 //flist << ['latitude' : 0]
-                //flist << ['longitude' :0]
-                
-                //flist << ['lastErrorTime' : readableErrorDate]
-                // end lgk attrs
-		/*	try {
-				flist << ['numberOfChargingCycles': srcMap.attributes.statistics.numberOfChargingCycles]
-				flist << ['numberOfCollisions': collisions]
-				flist << ['totalChargingTime': srcMap.attributes.statistics.totalChargingTime / 3600]
-				flist << ['totalCuttingTime': srcMap.attributes.statistics.totalCuttingTime / 3600]
-				flist << ['totalRunningTime': srcMap.attributes.statistics.totalRunningTime / 3600]
-				flist << ['totalSearchingTime': srcMap.attributes.statistics.totalSearchingTime / 3600]
-				flist << ['cuttingBladeUsageTime': srcMap.attributes.statistics.cuttingBladeUsageTime / 3600]
-			} catch(ignored){}
-*/
+            }
+            else 
+            {
+                flist << ['latitude' : srcMap.attributes?.positions?.getAt(0).latitude]
+                flist << ['longitude' :srcMap.attributes?.positions?.getAt(0).longitude]
+            }
+
 			flist << [apiConnected: apiConnection]
 			flist << [lastPoll: slastPoll]
 			flist << [debugLevel: dbg]
