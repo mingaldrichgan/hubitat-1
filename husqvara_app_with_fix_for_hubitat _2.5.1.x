@@ -510,7 +510,7 @@ def preferencesPage(){
 			paragraph("How frequently do you want to poll the Husqvarna cloud for changes? (Default 15 mins)", width: 8)
 			paragraph(sBLANK, width: 4)
 			input(name: "pollingInterval", title:inputTitle("Select Polling Interval")+" (minutes)", type: sENUM, required:false, multiple:false, defaultValue:"15", description: "in Minutes", width: 4,
-					options:["6", "10", "15", "30", "60"])
+					options:["3", "6", "10", "15", "30", "60"])
 			if(settings.pollingInterval == null){ app.updateSetting('pollingInterval', "15") }
 		}
 		section(title: sectionTitle("Operations")){}
@@ -691,7 +691,7 @@ void webSocketStatus(Boolean active) {
 @SuppressWarnings('GroovyFallthrough')
 void wsEvtHandler(Map evt){
 
-	LOG("in wsEvtHandler evt: ${evt}", 3, sDEBUG)
+	LOG("in wsEvtHandler evt: ${evt}", 4, sDEBUG)
 
 //	state.numAvailMowers=((List<Map>)ndata)?.size() ?: 0
 	Boolean fndMower,didChg
@@ -716,57 +716,12 @@ void wsEvtHandler(Map evt){
 	if(mower && typ){
 		switch(typ){
             
-			case 'battery-event-v2':
-            LOG("battery event v2", 3, sDEBUG)
-            	if(evt.attributes){
-					Map ma= (Map)mdata[dni].attributes
-					((Map)evt.attributes).each {
-							LOG("wsEvtHandler - type: ${typ} key: ${it.key} value: ${it.value}", 3, sDEBUG)
-						
-							if((String)it.key in ['battery']){
-								ma[it.key]=it.value
-								didChg=true
-							}else{
-								LOG("wsEvtHandler NOT FOUND - type: ${typ} key: ${it.key} value: ${it.value}", 4, sDEBUG)
-							}
-					}
-					//LOG("wsEvtHandler mdata[${dni}]: ${mdata[dni]}", 4, sDEBUG)
-					//LOG("wsEvtHandler ma: ${ma}", 4, sDEBUG)
-					mdata[dni].attributes=ma
-				}
-				break
-            
-			case 'calendar-event-v2':
-			case 'cuttingHeight-event-v2':
-			case 'headlights-event-v2':
-			case 'messages-event-v2':
-            
-			case 'mower-event-v2': 
-            LOG("mower event v2", 3, sDEBUG)
-            	if(evt.attributes){
-					Map ma= (Map)mdata[dni].attributes
-					((Map)evt.attributes).each {
-							LOG("wsEvtHandler - type: ${typ} key: ${it.key} value: ${it.value}", 3, sDEBUG)
-					
-							if((String)it.key in ['calendar','position','battery','mower','metadata','planner','statistics','message','position', 'cuttingHeight', 'headlight']){
-								ma[it.key]=it.value
-								didChg=true
-							}else{
-								LOG("wsEvtHandler NOT FOUND - type: ${typ} key: ${it.key} value: ${it.value}", 4, sDEBUG)
-							}
-					}
-					//LOG("wsEvtHandler mdata[${dni}]: ${mdata[dni]}", 4, sDEBUG)
-					//LOG("wsEvtHandler ma: ${ma}", 4, sDEBUG)
-					mdata[dni].attributes=ma
-				}
-				break
-                       
                 case 'planner-event-v2': 
-                LOG("planner event v2", 3, sDEBUG) 
+                
                 if(evt.attributes){ 
                     Map ma = (Map)mdata[dni].attributes
                     ((Map)evt.attributes).each { 
-                        LOG("wsEvtHandler - type: ${typ} key: ${it.key} value: ${it.value}", 3, sDEBUG) 
+                       // LOG("Processing: ${typ} key: ${it.key} value: ${it.value}", 3, sDEBUG) 
 
                         def theval = it.value 
 
@@ -785,53 +740,39 @@ void wsEvtHandler(Map evt){
                             // 4. Save the entire updated planner map back to your attributes storage
                             ma[it.key] = updatedPlanner 
                             didChg = true 
+                            LOG("Processed: type: ${typ} key: ${it.key} value: ${updatedPlanner}", 3, sDEBUG) 
+
                         } else { 
-                            LOG("wsEvtHandler NOT FOUND - type: ${typ} key: ${it.key} value: ${theval}", 4, sDEBUG) 
+                            LOG("wsEvtHandler NOT FOUND - type: ${typ} key: ${it.key} value: ${theval}", 3, sDEBUG) 
                         } 
                     } 
 					//LOG("wsEvtHandler ma: ${ma}", 3, sDEBUG)
                     mdata[dni].attributes = ma 
                 } 
                 break
-                 
-			case 'position-event-v2':
-            LOG("positiions event v2", 3, sDEBUG)
-            // lgk need to handle lonitude and latitude here as ignoring them
-             // parsed {"id":"004e7308-47b6-4a6a-8699-4e4746401e30","type":"position-event-v2","attributes":{"position":{"latitude":47.1261516,"longitude":-88.6025166}}}
-            	if(evt.attributes){
-					Map ma= (Map)mdata[dni].attributes
-					((Map)evt.attributes).each {
-							LOG("wsEvtHandler - type: ${typ} key: ${it.key} value: ${it.value}", 3, sDEBUG)
-					
-							if((String)it.key in ['position']){
-								ma[it.key]=it.value
-								didChg=true
-							}else{
-								LOG("wsEvtHandler NOT FOUND - type: ${typ} key: ${it.key} value: ${it.value}", 4, sDEBUG)
-							}
-					}
-					//LOG("wsEvtHandler mdata[${dni}]: ${mdata[dni]}", 3, sDEBUG)
-					//LOG("wsEvtHandler ma: ${ma}", 3, sDEBUG)
-					mdata[dni].attributes=ma
-				}
-				break
             
+			case 'battery-event-v2':         
+			case 'calendar-event-v2':
+			case 'cuttingHeight-event-v2':
+			case 'headlights-event-v2':
+			case 'messages-event-v2':            
+			case 'mower-event-v2':                        
+			case 'position-event-v2':                    
 			case 'status-event':
-
 			case 'positions-event':
+   			case 'settings-event':
             
-			case 'settings-event':
-               LOG("settings event", 3, sDEBUG)
 				if(evt.attributes){
 					Map ma= (Map)mdata[dni].attributes
 					((Map)evt.attributes).each {
-						LOG("wsEvtHandler - type: ${typ} key: ${it.key} value: ${it.value}", 3, sDEBUG)
+						//LOG("Processing: ${typ} key: ${it.key} value: ${it.value}", 3, sDEBUG)
 						
 							if((String)it.key in ['calendar','position','battery','mower','metadata','planner','statistics','message','position', 'cuttingHeight', 'headlight']){
 								ma[it.key]=it.value
 								didChg=true
+                                LOG("Processed: ${typ} key: ${it.key} value: ${it.value}", 3, sDEBUG)
 							}else{
-								LOG("wsEvtHandler NOT FOUND - type: ${typ} key: ${it.key} value: ${it.value}", 4, sDEBUG)
+								LOG("wsEvtHandler NOT FOUND - type: ${typ} key: ${it.key} value: ${it.value}", 3, sDEBUG)
 							}
 					}
 					//LOG("wsEvtHandler mdata[${dni}]: ${mdata[dni]}", 4, sDEBUG)
@@ -2766,7 +2707,7 @@ private String getTsVal(String key){
 }
 
 Integer getLastTsValSecs(String val, Integer nullVal=1000000){
-	return (val && getTsVal(val)) ? GetTimeDiffSeconds(getTsVal(val)).toInteger() : nullVal
+	return (val && getTsVal(val)) ? GetTimeDiffSeconds(getTsVal(val)).toInteger() : nullVal 
 }
 
 @Field volatile static Map<String,Map> serverDataMapFLD=[:]
