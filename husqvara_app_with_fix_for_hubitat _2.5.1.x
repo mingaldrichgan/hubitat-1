@@ -32,6 +32,8 @@
 * lgk version 10
 * it was using positions last to get the long latitude but since the have added a psotion (not plural) i can now use.. so up version as v4 it would only update this 
 * positions track sparingly 
+
+* version 12 httpget parsing fixed in 2.5.1.143 so reverted code to old version but left new raw version in the code with a hard coded variable that can be changed if we need it in the future.
 *
  */
 
@@ -46,7 +48,7 @@ import groovy.json.*
 import groovy.transform.Field
 import java.text.SimpleDateFormat
 
-static String getVersionNum()		{ return "00.00.10" }
+static String getVersionNum()		{ return "00.00.12" }
 static String getVersionLabel()		{ return "Husqvarna Automower Manager, version "+getVersionNum() }
 static String getMyNamespace()		{ return "imnotbob" }
 
@@ -514,16 +516,25 @@ def preferencesPage(){
 			paragraph("How frequently do you want to poll the Husqvarna cloud for changes? (Default 15 mins)", width: 8)
 			paragraph(sBLANK, width: 4)
 			input(name: "pollingInterval", title:inputTitle("Select Polling Interval")+" (minutes)", type: sENUM, required:false, multiple:false, defaultValue:"15", description: "in Minutes", width: 4,
-					options:["3", "6", "10", "15", "30", "60"])
+					options:["6", "10", "15", "30", "60"])
 			if(settings.pollingInterval == null){ app.updateSetting('pollingInterval', "15") }
 		}
-		section(title: sectionTitle("Operations")){}
+        section(title: sectionTitle("Operations")){}
+        
+                                         
+      
 		section(title: smallerTitle("Debug Log Level")){
 			paragraph("Select the debug logging level. Higher levels send more information to IDE Live Logging. A setting of 2 is recommended for normal operations.", width: 8)
 			paragraph(sBLANK, width: 4)
-			input(name: "debugLevel", title:inputTitle("Select Debug Log Level"), type: sENUM, required:false, multiple:false, defaultValue:"2", description: "2",
+            // input(name: "useHTTPRawGet", title: "Use the new raw HTTP GET to work around a bug in hubitat version 2.5.1 (may be fixed)?" , type: Boolean, required:true, defaultValue: false)                           
+    
+            
+			input(name: "debugLevel", title:inputTitle("Select Debug Log Level?"), type: sENUM, required:false, multiple:false, defaultValue:"2", description: "2",
 					options:["5", "4", "3", "2", "1", "0"], width: 4)
-			if(settings.debugLevel == null){ app.updateSetting('debugLevel', "2") }
+			if(settings.debugLevel == null){ app.updateSetting('debugLevel', "2") 
+                                        
+                                           }                          
+                                  
 			generateEventLocalParams() // push down to devices
 		}
 	}
@@ -1117,6 +1128,96 @@ Map<String,String> getAutoMowers(Boolean frc=false, String meth="followup", Bool
 
 	msg=sBLANK
 
+    //lgk old versus new query
+    def useHTTPRawGet = false
+    
+    if (useHTTPRawGet == false)
+    {
+     log.warn "Using old http get!"
+          
+	 if(myfrc || !skipIt) {
+		updTsVal("getAutoUpdDt")
+		Map deviceListParams=[
+			uri: getMowerApiEndpoint() +"/mowers",
+			headers: [
+				"Content-Type": "application/vnd.api+json",
+				"Authorization": "Bearer ${(String)state.authToken}",
+				"Authorization-Provider": "husqvarna",
+				"X-Api-Key":getHusqvarnaApiKey()
+			],
+			query: null,
+			timeout: 30
+		]
+		if(debugLevel(4)) {
+			msg+="http params -- ${deviceListParams} "
+		}
+		msg +="HTTPGET "
+		if(msg) {
+			LOG(msgH + msg, 3, sTRACE)
+			msg=sBLANK
+		}
+   
+        
+     try {
+			httpGet(deviceListParams) { resp ->
+				LOG(msgH + "httpGet() ${resp.status} Response", 4, sTRACE)
+				String rdata
+				Map adata
+				if(resp) {
+					rdata=resp.data.text // need to save first time since it is a ByteArrayInputStream
+					if(rdata) adata=(Map)new JsonSlurper().parseText(rdata)
+				}
+				if(resp && resp.isSuccess() && resp.status == 200 && adata) {
+
+					List<Map> ndata=((List<Map>)adata.data)?.findAll { it.type == "mower" }
+
+					state.numAvailMowers=((List<Map>)ndata)?.size() ?: 0
+
+					Map<String, Map> mdata=[:]
+					ndata.each { Map mower ->
+						String dni=getMowerDNI((String) mower.id)
+						mowers[dni]=getMowerDisplayName(mower)
+						mowersLocation[dni]=getMowerLocation(mower)
+						mdata[dni]=mower
+					}
+					state.mowerData=mdata
+					//log.debug "resp: ${state.mowerData}"
+				}else{
+					LOG(msgH + "httpGet() in else: http status: ${resp.status}", 1, sTRACE)
+					//refresh the auth token
+					if(resp.status == 500) { //} && resp.data?.status?.code == 14) {
+						if(!isRetry){
+							LOG(msgH + "Refreshing auth_token!", 3, sTRACE)
+							if(refreshAuthToken('getAutoMowers')) return getAutoMowers(frc, meth, true)
+						}
+					}else{
+						LOG(msgH + "Other error. Status: ${resp.status} Response data: ${rdata} ", 1, sERROR)
+					}
+					return [:]
+				}
+			}
+		} catch(Exception e) {
+			LOG(msgH + "___exception", 1, sERROR, e)
+			if(!isRetry) {
+				Boolean a = refreshAuthToken('getAutoMowers')
+			}
+			return [:]
+		}
+		state.mowersWithNames=mowers
+		state.mowersLocation=mowersLocation
+	} else {
+		mowers= state.mowersWithNames
+		mowersLocation=state.mowersLocation
+		cached="cached " 
+    }      
+    }
+    
+    else
+        
+    {
+        //using new http get workaround
+        log.warn "Using new http get/raw workaround!"
+        
 	if(myfrc || !skipIt) {
 		updTsVal("getAutoUpdDt")
         
@@ -1216,6 +1317,9 @@ Map<String,String> getAutoMowers(Boolean frc=false, String meth="followup", Bool
 		mowersLocation=state.mowersLocation
 		cached="cached "
 	}
+    }
+   
+   
 	msg += cached+"mowersWithNames: ${mowers}, locations: ${mowersLocation}"
 	LOG(msgH+msg, 4, sTRACE)
 	return (mowers) ? mowers.sort{ it.value } : null
